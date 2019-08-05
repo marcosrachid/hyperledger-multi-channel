@@ -26,7 +26,7 @@ pullFabricImage() {
 }
 
 # Pull Hyperledger Fabric base images.
-for imageName in peer orderer ccenv; do
+for imageName in peer orderer; do
     pullFabricImage ${imageName} 1.4.2
 done
 

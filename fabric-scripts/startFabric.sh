@@ -15,46 +15,11 @@
 # Exit on first error, print all commands.
 set -e
 
-Usage() {
-	echo ""
-	echo "Usage: ./startFabric.sh [-d || --dev]"
-	echo ""
-	echo "Options:"
-	echo -e "\t-d or --dev: (Optional) enable fabric development mode"
-	echo ""
-	echo "Example: ./startFabric.sh"
-	echo ""
-	exit 1
-}
-
-Parse_Arguments() {
-	while [ $# -gt 0 ]; do
-		case $1 in
-			--help)
-				HELPINFO=true
-				;;
-            --dev | -d)
-				FABRIC_DEV_MODE=true
-				;;
-		esac
-		shift
-	done
-}
-
-Parse_Arguments $@
-
-if [ "${HELPINFO}" == "true" ]; then
-    Usage
-fi
+FABRIC_START_TIMEOUT=15
 
 # Grab the current directory
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
-if [ "${FABRIC_DEV_MODE}" == "true" ]; then
-    DOCKER_FILE="${DIR}"/composer/docker-compose-dev.yml
-else
-    DOCKER_FILE="${DIR}"/composer/docker-compose.yml
-fi
+DOCKER_FILE="${DIR}"/composer/docker-compose.yml
 
 docker-compose -f "${DOCKER_FILE}" down
 docker-compose -f "${DOCKER_FILE}" up -d
@@ -64,12 +29,23 @@ docker-compose -f "${DOCKER_FILE}" up -d
 echo "sleeping for ${FABRIC_START_TIMEOUT} seconds to wait for fabric to complete start up"
 sleep ${FABRIC_START_TIMEOUT}
 
+# Org1
 # Create the channel
-docker exec peer0.org1.example.com peer channel create -o orderer.example.com:7050 -c composerchannel -f /etc/hyperledger/configtx/composer-channel.tx
+docker exec peer.org1.example.com peer channel create -o orderer.example.com:7050 -c ChannelOrg12 -f /etc/hyperledger/configtx/channel12.tx
 
-# Join peer0.org1.example.com to the channel.
-docker exec -e "CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/msp/users/Admin@org1.example.com/msp" peer0.org1.example.com peer channel join -b composerchannel.block
+# Join peer.org1.example.com to the channel.
+docker exec -e "CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/msp/users/Admin@org1.example.com/msp" peer.org1.example.com peer channel join -b channel12.block
 
-if [ "${FABRIC_DEV_MODE}" == "true" ]; then
-    echo "Fabric Network started in chaincode development mode"
-fi
+# Org2
+# Create the channel
+docker exec peer.org2.example.com peer channel create -o orderer.example.com:7050 -c ChannelOrg23 -f /etc/hyperledger/configtx/channel23.tx
+
+# Join peer.org2.example.com to the channel.
+docker exec -e "CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/msp/users/Admin@org2.example.com/msp" peer.org2.example.com peer channel join -b channel23.block
+
+# Org3
+# Create the channel
+docker exec peer.org3.example.com peer channel create -o orderer.example.com:7050 -c ChannelOrg13 -f /etc/hyperledger/configtx/channel13.tx
+
+# Join peer.org3.example.com to the channel.
+docker exec -e "CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/msp/users/Admin@org3.example.com/msp" peer.org3.example.com peer channel join -b channel13.block
